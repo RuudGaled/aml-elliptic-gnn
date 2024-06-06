@@ -54,32 +54,55 @@ def load_data(data_path, noAgg=False):
 
     #--------------------------------------------------------------------------------------------#
 
-    # df_edges = pd.read_csv(osp.join(data_path, "edges.csv"), usecols=['clId1', 'clId2'])
-    df_edges = pd.read_csv(osp.join(data_path, "edges.csv"))
+    df_edges = pd.read_csv(osp.join(data_path, "edges.csv"), usecols=['clId1', 'clId2'])
+    # df_edges = pd.read_csv(osp.join(data_path, "edges.csv"))
 
     connected_components = pd.read_csv(osp.join(data_path, "connected_components.csv"))
-    nodes = pd.read_csv(osp.join(data_path, "nodes.csv"), nrows=123000)
-    background_nodes = pd.read_csv(osp.join(data_path, "background_nodes.csv"), nrows=123000)
+    nodes = pd.read_csv(osp.join(data_path, "nodes.csv"), nrows=367137)
+    background_nodes = pd.read_csv(osp.join(data_path, "background_nodes.csv"), nrows=367137)
 
     # print(sum(1 for row in csv.reader(open("background_nodes.csv"))))
 
-    # Map ccLabel in numeric value
-    connected_components.loc[connected_components['ccLabel'] == 'licit', 'ccLabel'] = '0'
-    connected_components.loc[connected_components['ccLabel'] == 'suspicious', 'ccLabel'] = '1'
+    #connected_components.info()
 
-    print(connected_components)
+    # Map ccLabel in numeric value
+    connected_components.loc[connected_components['ccLabel'] == 'licit', 'ccLabel'] = 0
+    connected_components.loc[connected_components['ccLabel'] == 'suspicious', 'ccLabel'] = 1
+
+    connected_components['ccLabel'] =  pd.to_numeric(connected_components['ccLabel'], errors='coerce')
+
+    connected_components['ccLabel'].fillna(3, inplace=True)
+
+    connected_components['ccLabel'] = connected_components['ccLabel'].astype(int)
+
+    # print(connected_components)
+
+    connected_components.info()
 
     # Merge part
     merge1 = pd.merge(connected_components, nodes, on='ccId')
     df_class_feature = pd.merge(merge1, background_nodes, on='clId')
 
+    # Filtraggio degli archi
+    # Vengono mantenuti solo gli archi (transazioni) i cui nodi (transazioni) sono presenti nel DataFrame df_class_feature.
+    
+    # Contare righe
+    # righe_edges = len(df_edges)
+    # righe_cc = len(connected_components)
+    # righe_nodes = len(nodes)
+    # righe_bc = len(background_nodes)
 
-    # print("edges: \n", df_edges)
-    # print("altro: \n",df_class_feature)
+    # print("righe_edges: \n", righe_edges)
+    # print("righe_cc: \n", righe_cc)
+    # print("righe_nodes : \n", righe_nodes)
+    # print("righe_edges: \n", righe_bc)
+
+    print("edges: \n", df_edges)
+    print("df_class_feature: \n",df_class_feature)
     
     return df_class_feature, df_edges
     
-    return df_class_feature, df_edges
+    # return df_class_feature, df_edges
 
 
 def data_to_pyg(df_class_feature, df_edges):
@@ -95,9 +118,11 @@ def data_to_pyg(df_class_feature, df_edges):
 
     #-------------------------------------------------------------------------------------------#
 
-    edge_index = torch.tensor(df_edges.values, dtype=torch.long)
+    # edge_index = torch.tensor(df_edges.values, dtype=torch.long)
+    edge_index = torch.tensor([df_edges["clId1"].values,df_edges["clId2"].values], dtype=torch.long)
     x = torch.tensor(df_class_feature.iloc[:, 3:].values, dtype=torch.float)
-    y = torch.tensor(df_class_feature["ccId"].values, dtype=torch.long)
+    # y = torch.tensor(df_class_feature["ccId"].values, dtype=torch.long)
+    y = torch.tensor(df_class_feature["ccLabel"].values, dtype=torch.long)
 
     data = Data(x=x, edge_index=edge_index, y=y)
     data = RandomNodeSplit(num_val=0.15, num_test=0.2)(data)

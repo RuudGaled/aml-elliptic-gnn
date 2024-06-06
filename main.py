@@ -126,6 +126,8 @@ print("="*50)
 
 model_list = list(models_to_train.items())
 
+print("data: \n", data)
+
 for i in range(0, len(model_list), 3):
     # configuration (tx)
     (name, model) = model_list[i]
